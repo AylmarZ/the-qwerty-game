@@ -10,9 +10,25 @@
 	};
 
 	let text: letter[] = $state([]);
-	let currentTextIndex: number = $state(0);
+	let currentLetterIndex: number = $state(0);
 
+	let time = $state({
+		cs: 0,
+		s: 0,
+		m: 0
+	});
+	let timerInterval: number | null = $state(null);
+
+	let finishedGame: boolean = $state(false);
 	const initGame = () => {
+		finishedGame = false;
+		if (timerInterval) clearInterval(timerInterval);
+		timerInterval = null;
+		time = {
+			cs: 0,
+			s: 0,
+			m: 0
+		};
 		text = [];
 		[...initialText].forEach((letter) => {
 			text.push({
@@ -20,27 +36,58 @@
 				typed: 'not'
 			});
 		});
+		currentLetterIndex = 0;
 	};
 
 	const handleKeyDown = ({ key }: KeyboardEvent) => {
+		if (key !== 'Backspace' && key.length !== 1) {
+			if (key === 'Enter') {
+				return initGame();
+			} else {
+				return;
+			}
+		}
+		if (!timerInterval && !finishedGame) {
+			timerInterval = setInterval(() => {
+				time.cs++;
+				if (time.cs === 100) {
+					time.s++;
+					time.cs = 0;
+					if (time.s === 60) {
+						time.m++;
+						time.m = 0;
+					}
+				}
+			}, 10);
+		}
 		text.map((l, i) => {
-			if (i === currentTextIndex) {
+			if (i === currentLetterIndex) {
 				if (l.letter === key) {
 					l.typed = 'correct';
 				} else if (key !== 'Backspace') {
 					l.typed = 'incorrect';
 				}
-			} else if (i === currentTextIndex - 1 && key === 'Backspace') {
+			} else if (i === currentLetterIndex - 1 && key === 'Backspace') {
 				l.typed = 'not';
 			}
 			return l;
 		});
 		if (key === 'Backspace') {
-			if (currentTextIndex !== 0) {
-				currentTextIndex--;
+			if (currentLetterIndex !== 0) {
+				currentLetterIndex--;
 			}
-		} else if (currentTextIndex !== text.length) {
-			currentTextIndex++;
+		} else if (currentLetterIndex !== text.length) {
+			currentLetterIndex++;
+			if (
+				currentLetterIndex === text.length &&
+				!text.find((letter) => letter.typed === 'incorrect')
+			) {
+				finishedGame = true;
+				if (timerInterval) {
+					clearInterval(timerInterval);
+				}
+				timerInterval = null;
+			}
 		}
 	};
 
@@ -57,16 +104,30 @@
 			<Logo />
 		</div>
 	</div>
+
 	<div id="main" class="flex w-full flex-1 items-center justify-center p-4">
-		{#each text as letter, index}
-			<span
-				class="letter spacing border-l-2 border-transparent text-xl tracking-wider {currentTextIndex ===
-					index && `border-white transition-all`}"
-				id="text-{letter.typed}"
-			>
-				{letter.letter}
-			</span>
-		{/each}
+		<div class="flex w-3/5 flex-col items-center justify-center">
+			<p class={finishedGame ? `text-4xl` : `text-3xl`}>
+				{time.m.toString().padStart(2, '0')}:{time.s.toString().padStart(2, '0')}{finishedGame
+					? '.' + time.cs.toString().padStart(2, '0')
+					: ''}
+			</p>
+			{#if !finishedGame}
+				<p class="break-words">
+					{#each text as letter, index}
+						<span
+							class="spacing border-l-2 border-transparent text-3xl tracking-widest {currentLetterIndex ===
+								index && `border-white transition-all`}"
+							id="text-{letter.typed}"
+						>
+							{letter.letter}
+						</span>
+					{/each}
+				</p>
+			{:else}
+				<h1 class="text-3xl font-semibold">Press enter to play again</h1>
+			{/if}
+		</div>
 	</div>
 </div>
 
